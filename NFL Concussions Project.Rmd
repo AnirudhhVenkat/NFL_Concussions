@@ -1,0 +1,467 @@
+---
+title: "Concussions from 2012-2014 NFL Seasons"
+author: "Serena Amro Gazze, Arjun Vadlamudi, Anirudhh Venkat"
+date: "2025-02-17"
+output: html_document
+---
+
+```{r libraries, echo = FALSE}
+
+#Load libraries
+
+suppressPackageStartupMessages(library(tidyverse))
+library(ggplot2)
+library(dplyr)
+library(forcats)
+
+```
+
+```{r concussions, echo = FALSE}
+
+#Load NFL Concussions dataset
+
+concussions <- read.csv("/Users/anivenkat/Downloads/Concussion Injuries 2012-2014.csv")
+
+concussions <- concussions %>%
+  mutate(Position = ifelse(Position == "Comerback", "Cornerback", Position)) %>%
+  filter(Position != "Long Snapper")
+
+#Make new column for offensive vs defensive positions
+offense_pos <- c("Center", "Offensive Tackle", "Quarterback", "Running Back", "Tight End", "Wide Receiver", "Guard", "Full Back")
+defense_pos <- c("Defensive End", "Defensive Tackle", "Linebacker", "Safety", "Cornerback")
+
+concussions <- concussions %>%
+  mutate(Side = case_when(
+    Position %in% offense_pos ~ "Offense",
+    Position %in% defense_pos ~ "Defense"
+  )) 
+
+#head(concussions)
+#str(concussions)
+
+```
+
+***Serena Amro Gazze: Analysis of NFL Concussions relative to Positions***
+
+```{r positions, echo = FALSE}
+
+#Filter Concussions dataset into Positions dataset
+positions <- concussions %>% select(ID, Position, Side, Reported.Injury.Type, Unknown.Injury., Pre.Season.Injury., Weeks.Injured, Games.Missed, Play.Time.After.Injury)
+
+#head(positions)
+
+```
+
+```{r unique, echo = FALSE}
+
+#Write out all the unique positions
+position <- positions %>% select(Position)
+
+unique <- unique(position)
+#unique
+
+#str(position)
+
+```
+
+```{r offense, echo = FALSE}
+
+#Make offense dataset
+offense <- positions %>% filter(Side == "Offense")
+
+#head(offense)
+#str(offense)
+
+```
+
+```{r defense, echo = FALSE}
+
+#Make defense dataset
+defense <- positions %>% filter(Side == "Defense")
+
+#head(defense)
+#str(defense)
+
+```
+
+***Question 1a: Do offensive or defensive football positions result in more head injuries?***
+
+```{r off vs def, echo = FALSE}
+
+#Make data frame of numbers of offense vs defensive concussions
+position_counts <- data.frame(
+  Side = c("Offense", "Defense"),
+  Count = c(nrow(offense), nrow(defense))
+)
+
+side_counts_plot <- ggplot(position_counts, aes(x = Side, y = Count, fill = Side)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = Count), vjust = -0.5) +
+  scale_fill_manual(values = c("Offense" = "blue", "Defense" = "red")) +
+  labs(title = "Number of Concussions: Offense vs. Defense",
+       x = "Position Group",
+       y = "Count of Head Injuries") +
+  theme_minimal()
+
+side_counts_plot
+
+```
+
+***Question 1b: Which positions have the most and least head injuries?***
+
+```{r positions plot, echo = FALSE}
+
+#Make full positions plot
+#Separate bars by color of offense vs defense
+
+positions_plot <- ggplot(positions, aes(x = fct_infreq(Position), fill = Side)) +
+  geom_bar(stat = "count") +
+  geom_text(stat = "count", aes(label = after_stat(count)), vjust = -0.5) +
+  scale_fill_manual(values = c("Offense" = "blue", "Defense" = "red")) + 
+  labs(title = "Number of Concussions per Position",
+       x = "Position",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+positions_plot
+
+```
+
+```{r most least injured, echo = FALSE}
+
+#Make data frame of most injured positions
+top_injured <- positions %>%
+  count(Position, name = "Injury.Count") %>%
+  arrange(desc(Injury.Count)) %>%
+  slice_head(n = 5)
+
+top_injured <- top_injured %>%
+  mutate(Side = case_when(
+    Position %in% offense_pos ~ "Offense",
+    Position %in% defense_pos ~ "Defense",
+  )) %>%
+  select(Position, Side, Injury.Count)
+
+#top_injured
+
+#Make data frame of least injured positions
+bottom_injured <- positions %>%
+  count(Position, name = "Injury.Count") %>%
+  arrange(Injury.Count) %>%
+  slice_head(n = 5)
+
+bottom_injured <- bottom_injured %>%
+  mutate(Side = case_when(
+    Position %in% offense_pos ~ "Offense",
+    Position %in% defense_pos ~ "Defense",
+  )) %>%
+  select(Position, Side, Injury.Count)
+
+#bottom_injured
+
+```
+
+***Question 1c: Which positions result in the top 5 numbers of head injuries?***
+
+```{r most injured plot, echo = FALSE}
+
+#Make top injured plot
+top_plot <- ggplot(top_injured, aes(x = reorder(Position, -Injury.Count), y = Injury.Count, fill = Side)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = Injury.Count), vjust = -0.5) +
+  scale_fill_manual(values = c("Offense" = "blue", "Defense" = "red")) +
+  labs(title = "Top 5 Positions with Most Head Injuries",
+       x = "Position",
+       y = "Count of Injuries") +
+  theme_minimal()
+
+top_plot
+
+```
+
+***Question 1d: Which positions result in the bottom 5 numbers of head injuries?***
+
+```{r least injured plot, echo = FALSE}
+
+#Make bottom injured plot
+bottom_plot <- ggplot(bottom_injured, aes(x = reorder(Position, -Injury.Count), y = Injury.Count, fill = Side)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = Injury.Count), vjust = -0.5) +
+  scale_fill_manual(values = c("Offense" = "blue", "Defense" = "red")) +
+  labs(title = "Top 5 Positions with Least Head Injuries",
+       x = "Position",
+       y = "Count of Injuries") +
+  theme_minimal()
+
+bottom_plot
+
+```
+
+***Question 1e: Which offensive positions result in the most and least head injuries?***
+
+```{r offense plot, echo = FALSE}
+
+#Make offensive positions plot
+library(forcats)
+
+offensive_plot <- ggplot(offense, aes(x = fct_infreq(Position), fill = Position)) +
+  geom_bar(stat = "count") +
+  geom_text(stat = "count", aes(label = after_stat(count)), vjust = -0.5) +
+  labs(title = "Number of Concussions per Offensive Position",
+       x = "Position",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+offensive_plot
+
+```
+
+***Question 1f: Which defensive positions result in the most and least head injuries?***
+
+```{r defense plot, echo = FALSE}
+
+#Make defensive positions plot
+defensive_plot <- ggplot(defense, aes(x = fct_infreq(Position), fill = Position)) +
+  geom_bar(stat = "count") +
+  geom_text(stat = "count", aes(label = after_stat(count)), vjust = -0.5) +
+  labs(title = "Number of Concussions per Defensive Position",
+       x = "Position",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+defensive_plot
+
+```
+
+```{r injuries per season, echo = FALSE}
+
+#Get number of injuries per season
+twelve <- concussions %>% select(ID, Season, Position, Side, Reported.Injury.Type, Unknown.Injury., Pre.Season.Injury., Weeks.Injured, Games.Missed, Play.Time.After.Injury)
+twelve <- twelve %>% filter(Season == "2012/2013")
+twelve_count <- nrow(twelve)
+#twelve_count
+
+thirteen <- concussions %>% select(ID, Season, Position, Side, Reported.Injury.Type, Unknown.Injury., Pre.Season.Injury., Weeks.Injured, Games.Missed, Play.Time.After.Injury)
+thirteen <- thirteen %>% filter(Season == "2013/2014")
+thirteen_count <- nrow(thirteen)
+#thirteen_count
+
+fourteen <- concussions %>% select(ID, Season, Position, Side, Reported.Injury.Type, Unknown.Injury., Pre.Season.Injury., Weeks.Injured, Games.Missed, Play.Time.After.Injury)
+fourteen <- fourteen %>% filter(Season == "2014/2015")
+fourteen_count <- nrow(fourteen)
+#fourteen_count
+
+```
+
+```{r season df, echo = FALSE}
+
+#Make data frame of number of injuries per season
+year_counts <- data.frame(
+  Season = c("2012/2013", "2013/2014", "2014/2015"),
+  Concussion_Count = c(twelve_count, thirteen_count, fourteen_count)
+)
+
+#year_counts
+
+```
+
+***Question 1g: Is there a trend in concussion frequency over different seasons (2012-2014 seasons)?***
+
+```{r season plot, echo = FALSE}
+
+#Plot concussions per season
+year_plot <- ggplot(year_counts, aes(x = reorder(Season, -Concussion_Count), y = Concussion_Count, fill = Season)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = Concussion_Count), vjust = -0.5) + 
+  labs(title = "Number of Concussions Per Season",
+       x = "Season",
+       y = "Concussion Count") +
+  theme_minimal()
+
+year_plot
+
+```
+
+```{r off vs def per season, echo = FALSE}
+
+#Get number of specifically offense or defense positions per year
+twelve_off <- twelve %>% filter(Side == "Offense")
+twelve_off_count <- nrow(twelve_off)
+#twelve_off_count
+
+twelve_def <- twelve %>% filter(Side == "Defense")
+twelve_def_count <- nrow(twelve_def)
+#twelve_def_count
+
+thirteen_off <- thirteen %>% filter(Side == "Offense")
+thirteen_off_count <- nrow(thirteen_off)
+#thirteen_off_count
+
+thirteen_def <- thirteen %>% filter(Side == "Defense")
+thirteen_def_count <- nrow(thirteen_def)
+#thirteen_def_count
+
+fourteen_off <- fourteen %>% filter(Side == "Offense")
+fourteen_off_count <- nrow(fourteen_off)
+#fourteen_off_count
+
+fourteen_def <- fourteen %>% filter(Side == "Defense")
+fourteen_def_count <- nrow(fourteen_def)
+#fourteen_def_count
+
+```
+
+```{r off vs def df, echo = FALSE}
+
+#Make data frames of number of specifically offense or defense positions per year
+off_year_counts <- data.frame(
+  Season = c("2012/2013", "2013/2014", "2014/2015"),
+  Concussion_Count = c(twelve_off_count, thirteen_off_count, fourteen_off_count)
+)
+
+def_year_counts <- data.frame(
+  Season = c("2012/2013", "2013/2014", "2014/2015"),
+  Concussion_Count = c(twelve_def_count, thirteen_def_count, fourteen_def_count)
+)
+
+#off_year_counts
+#def_year_counts
+
+```
+
+***Question 1h: Is there a trend in concussion frequency for offensive positions over different seasons (2012-2014)?***
+
+```{r off per season plot, echo = FALSE}
+
+#Make plot of numbers of offensive injuries per season
+off_years_plot <- ggplot(off_year_counts, aes(x = Season, y = Concussion_Count, fill = Season)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = Concussion_Count), vjust = -0.5) + 
+  labs(title = "Number of Offensive Concussions Per Season",
+       x = "Season",
+       y = "Concussion Count") +
+  theme_minimal()
+
+off_years_plot
+
+```
+
+***Question 1i: Is there a trend in concussion frequency for defensive positions over different seasons (2012-2014)?***
+
+```{r def per season plot, echo = FALSE}
+
+#Make plot of numbers of defensive injuries per season
+def_years_plot <- ggplot(def_year_counts, aes(x = Season, y = Concussion_Count, fill = Season)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = Concussion_Count), vjust = -0.5) + 
+  labs(title = "Number of Defensive Concussions Per Season",
+       x = "Season",
+       y = "Concussion Count") +
+  theme_minimal()
+
+def_years_plot
+
+```
+
+***Arjun Vadlamudi: Analysis of Injury Type relative to Seasons***
+***Question 2a: How does the season correlate with injury type?***
+
+```{r, echo = FALSE}
+
+# Using group_by function to group data by season and injury type
+injury_counts_by_season <- concussions %>%
+  group_by(Season, Reported.Injury.Type) %>%
+  count(Season, name = "InjuryCount")
+
+# Create bar chart
+ggplot(injury_counts_by_season, aes(x = Season, y = InjuryCount, fill = Reported.Injury.Type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Number of Injury Types per Season",
+       x = "Season",
+       y = "Number of Injuries",
+       fill = "Injury Type") +
+          theme_bw()
+
+```
+
+***Question 2b: How does injury type affect team's performance?***
+
+```{r, echo = FALSE}
+
+# Using group_by function to group data by Winning Team and injury type
+injury_win_counts <- concussions %>%
+  group_by(Winning.Team., Reported.Injury.Type) %>%
+  count(Winning.Team., name = "InjuryCount")
+
+# Create bar chart
+ggplot(injury_win_counts, aes(x = Reported.Injury.Type, y = InjuryCount, fill = Winning.Team.)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Injury Type vs. Winning Team",
+       x = "Injury Type",
+       y = "Number of Injuries",
+       fill = "Winning Team") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+***Anirudhh Venkat: Analysis of Teams Causing the Most Head Injuries***
+***Question 3a: Which team has the most injuries?***
+
+```{r, echo = FALSE}
+
+# create "other" injuries
+concussions <- concussions %>%
+  mutate(Reported.Injury.Type = ifelse(Reported.Injury.Type == "",
+                                       "Other", Reported.Injury.Type))
+
+# get top 10 teams
+top_teams <- concussions %>%
+  group_by(Team) %>%
+  summarize(TotalInjuries = n(), .groups = "drop") %>%
+  arrange(desc(TotalInjuries)) %>%
+  slice_head(n = 10)
+
+# filter for top 10 teams and by injury
+injury_counts_by_team_injury <- concussions %>%
+  filter(Team %in% top_teams$Team) %>%
+  group_by(Team, Reported.Injury.Type) %>%
+  summarize(InjuryCount = n(), .groups = "drop") %>%
+  left_join(top_teams, by = "Team")
+
+# plot bar plot
+ggplot(injury_counts_by_team_injury, aes(x = reorder(Team, -TotalInjuries), y = InjuryCount, fill = Reported.Injury.Type)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Top 10 Teams with Most Injuries",
+       x = "Team",
+       y = "Number of Injuries",
+       fill = "Injury Type") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+***Question 3b: Which team causes the most injuries?***
+
+```{r, echo = FALSE}
+
+# get top 10 injury counts by opposing teams
+team_injury_count <- concussions %>%
+  group_by(Opposing.Team) %>%
+  summarise(Injury_Count = n()) %>%
+  arrange(desc(Injury_Count)) %>%
+  slice_head(n = 10)
+
+# plot bubble chart
+ggplot(team_injury_count, aes(x = reorder(Opposing.Team, -Injury_Count), y = Injury_Count, size = Injury_Count)) +
+  geom_point(alpha = 0.7) +
+  labs(title = "Injury Counts by Opposing Team",
+       x = "Opposing Team",
+       y = "Injury Count") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  # control bubble sizes
+  scale_size_continuous(range = c(5, 15))
+
+```
